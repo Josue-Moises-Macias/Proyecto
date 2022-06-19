@@ -1,1 +1,93 @@
+from tkinter import *
+import tkinter.scrolledtext as scrolledtext
+from tkinter import messagebox, filedialog
+from pyzbar.pyzbar import decode, ZBarSymbol
+import cv2
+import pyautogui
+import numpy as np
+import threading
+from PIL import Image, ImageTk, ImageDraw
+import os
+ 
+class Lector:
+    def __init__(self,font_video=0):
+        self.active_camera = False
+        self.codelist = []
+        self.appName = 'Lector QR'
+        self.ventana = Tk()
+        
+        self.font_video=font_video
+        
+        self.display=scrolledtext.ScrolledText(self.ventana,width=66,background='snow2'
+                                        ,height=10,padx=60, pady=60,font=('Arial', 10))
+        self.display.pack(side=BOTTOM)
+ 
+        self.canvas=Canvas(self.ventana,bg='blue',width=600,height=0)
+        self.canvas.pack()
+        self.btnCamera=Button(self.ventana,text="INICIAR LECTURA",width=30,bg='cyan',
+                                activebackground='blue',command=self.active_cam)
+        self.btnCamera.pack(side=LEFT)
+       
+ 
+    def visor(self):
+        ret, frame=self.get_frame()
+        if ret:
+            self.photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
+            self.canvas.create_image(0,0,image=self.photo,anchor=NW)
+            self.ventana.after(15,self.visor)
+ 
+    def active_cam(self):
+        if self.active_camera == False:
+            self.active_camera = True
+            self.VideoCaptura()
+            self.visor()
+        else:
+            self.active_camera = False
+            self.codelist = []
+            self.btnCamera.configure(text="INICIAR LECTURA POR CAMARA")
+            self.vid.release()
+            self.canvas.delete('all')
+            self.canvas.configure(height=0)
+ 
+    def capta(self,frm):
+        self.info = decode(frm)
+        if self.info != []:
+            self.display.delete('1.0',END)
+            for code in self.info:
+                if code not in self.codelist:
+                    content = code[0].decode('utf-8')
+                    self.codelist.append(content)
+                    self.display.insert(END,content+'\n')
+                self.draw_rectangle(frm)
+        else:
+            if len(self.codelist)>0:
+                self.display.delete('1.0',END)
+                for e in set(self.codelist):
+                    self.display.insert(END,e+'\n')
+ 
+    def get_frame(self):
+        if self.vid.isOpened():
+            verif,frame=self.vid.read()
+            if verif:
+                self.capta(frame)
+                return(verif,cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+           
+ 
+    def draw_rectangle(self,frm):
+        codes = decode(frm)
+        for code in codes:
+            data = code.data.decode('ascii')
+            x, y, w, h = code.rect.left, code.rect.top, \
+                        code.rect.width, code.rect.height
+            cv2.rectangle(frm, (x,y),(x+w, y+h),(255, 255, 0), 6)
+ 
+    def VideoCaptura(self):
+        self.vid = cv2.VideoCapture(self.font_video)
+        if self.vid.isOpened():
+            self.width=self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)
+            self.height=self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            self.canvas.configure(width=self.width,height=self.height)
+       
+if __name__=="__main__":
+    Lector()
 
